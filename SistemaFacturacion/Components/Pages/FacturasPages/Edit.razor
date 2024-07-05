@@ -1,0 +1,268 @@
+﻿@page "/EditFacturas"
+@page "/EditFacturas/facturaId={facturaId:int}"
+@rendermode InteractiveServer
+@inject NavigationManager navigation
+@inject FacturasService facturasService
+@inject ProductosService productosService
+
+<PageTitle>Modificar Factura</PageTitle>
+<EditForm Model="factura" OnValidSubmit="Modificar">
+	<DataAnnotationsValidator />
+	<div class="container">
+		<div class="card shadow-lg">
+			@*Header*@
+			<div class="card-header">
+				<h3 class="text-center"><strong>Modificar Factura</strong></h3>
+			</div>
+			@*Body*@
+			<div class="card-body">
+				@*Fila #1*@
+				<div class="row mb-3">
+					<div class="col-2">
+						@*Factura Id*@
+						<label class="form-label" for="facturaId"><strong>FacturaId:</strong></label>
+						<InputNumber id="facturaId" class="form-control" @bind-Value="factura.FacturaId" readonly></InputNumber>
+					</div>
+					<div class="col-4">
+						@*Fecha*@
+						<label class="form-label" for="fecha"><strong>Fecha:</strong></label>
+						<InputDate id="fecha" class="form-control" @bind-Value="factura.FechaCreacion" readonly></InputDate>
+						<ValidationMessage For="@(() => factura.FechaCreacion)"></ValidationMessage>
+					</div>
+				</div>
+				@*Fila #2*@
+				<div class="row mb-3">
+					<div class="col-6">
+						@*Cliente*@
+						<label class="form-label" for="cliente"><strong>Cliente:</strong></label>
+						<InputText id="cliente" class="form-control" @bind-Value="factura.NombreCliente" placeholder="Ej: Juan Pérez"></InputText>
+						<ValidationMessage For="@(() => factura.NombreCliente)"></ValidationMessage>
+					</div>
+					<div class="col-6">
+						@*Direccion*@
+						<label class="form-label" for="direccion"><strong>Direcci&oacute;n:</strong></label>
+						<InputText id="direccion" class="form-control" @bind-Value="factura.Direccion" placeholder="Ej: Ave. Libertad #10"></InputText>
+						<ValidationMessage For="@(() => factura.Direccion)"></ValidationMessage>
+					</div>
+				</div>
+				@*Fila #3*@
+				<div class="row mb-3">
+					<div class="col-6">
+						@*Telefono*@
+						<label class="form-label" for="telefono"><strong>Tel&eacute;fono:</strong></label>
+						<InputText id="telefono" class="form-control" @bind-Value="factura.Telefono" placeholder="Ej: 829-284-3031"></InputText>
+						<ValidationMessage For="@(() => factura.Telefono)"></ValidationMessage>
+					</div>
+					<div class="col-6">
+						@*Email*@
+						<label class="form-label" for="email"><strong>Email:</strong></label>
+						<InputText id="email" class="form-control" @bind-Value="factura.Email" placeholder="Ej: usuario@gmail.com"></InputText>
+						<ValidationMessage For="@(() => factura.Email)"></ValidationMessage>
+					</div>
+				</div>
+
+				@*FacturasDetalle*@
+				<fieldset class="border-primmary border border-2">
+					@*Body*@
+					<div class="card-body">
+						<section class="row mb-4">
+							<h3><strong>Detalle</strong></h3>
+							<div class="row align-content-center">
+								<div class="col-4">
+									@*Productos*@
+									<label class="form-label" for="producto"><strong>Producto:</strong></label>
+									<InputSelect id="producto" class="form-select" @bind-Value="productoId" @onblur="CalcularMonto">
+										<option value="0" disabled>Elije una opci&oacute;n</option>
+										@foreach (var producto in productos)
+										{
+											<option value="@producto.ProductoId">@producto.Nombre</option>
+										}
+									</InputSelect>
+								</div>
+								<div class="col-4">
+									@*Cantidad*@
+									<label class="form-label" for="cantidad"><strong>Cantidad:</strong></label>
+									<InputNumber id="cantidad" class="form-control" @bind-Value="cantidad" @onblur="CalcularMonto"></InputNumber>
+								</div>
+								@*Boton*@
+								<div class="col-4 d-flex align-items-end">
+									<button type="button" class="btn btn-outline-success" @onclick="AgregarDetalle"><i class="bi bi-plus-circle" /> Agregar</button>
+								</div>
+							</div>
+						</section>
+						<section>
+							@if (factura.FacturaDetalle.Count > 0)
+							{
+								@*Table Detalles*@
+								<table class="table table-bordered miTabla">
+									<thead>
+										<tr>
+											<th>Producto</th>
+											<th>Cantidad</th>
+											<th>Precio de Venta</th>
+											<th>ITBIS</th>
+											<th>SubTotal</th>
+											<th></th>
+										</tr>
+									</thead>
+									<tbody>
+										@foreach (var detalle in factura.FacturaDetalle)
+										{
+											<tr>
+												<td>@ObtenerNombreProducto(detalle.ProductoId)</td>
+												<td>@detalle.Cantidad</td>
+												<td>@detalle.PrecioVenta</td>
+												<td>@detalle.Impuesto</td>
+												<td>@detalle.SubTotal</td>
+												<td><button type="button" class="btn btn-outline-danger" @onclick="()=> EliminarDetalle(detalle)"><i class="bi bi-trash3-fill" /></button></td>
+											</tr>
+										}
+									</tbody>
+								</table>
+								<div class="row">
+									<div class="col text-start">
+										<p><strong>Total de Productos: </strong>@factura.FacturaDetalle.Count</p>
+									</div>
+									<div class="col text-end">
+										<h5><strong>Subtotal:</strong> $@factura.FacturaDetalle.Sum(f => f.SubTotal).ToString("N2")</h5>
+									</div>
+								</div>
+								<div class="row">
+									<div class="col text-end">
+										<h5><strong>ITBIS:</strong> $@factura.FacturaDetalle.Sum(f => f.Impuesto).ToString("N2")</h5>
+									</div>
+								</div>
+								<div class="row">
+									<div class="col text-end">
+										<h5><strong>Total:</strong> $@factura.FacturaDetalle.Sum(f => f.SubTotal + f.Impuesto).ToString("N2")</h5>
+									</div>
+								</div>
+							}
+						</section>
+					</div>
+				</fieldset>
+			</div>
+			@*Footer*@
+			<div class="card-footer d-flex justify-content-center">
+				<div class="px-2">
+					<button type="button" class="btn btn-outline-primary" @onclick="Volver"><i class="bi bi-box-arrow-left" /> Volver</button>
+				</div>
+				<button type="submit" class="btn btn-outline-success"><i class="bi bi-floppy-fill" /> Modificar</button>
+			</div>
+		</div>
+	</div>
+</EditForm>
+
+@code {
+	[Parameter]
+	public int facturaId { get; set; }
+	public Facturas factura { get; set; } = new Facturas();
+	public int productoId { get; set; }
+	public int cantidad { get; set; }
+	public decimal precioVenta { get; set; }
+	public decimal impuesto { get; set; }
+	public decimal subTotal { get; set; }
+	public List<Productos> productos = new List<Productos>();
+
+	protected override async Task OnInitializedAsync()
+	{
+		await Task.Delay(500);
+		productos = await productosService.Listar(e => true);
+		factura = await facturasService.Buscar(facturaId);
+	}
+
+	public async void Modificar()
+	{
+		if (await Validar())
+			return;
+		else
+		{
+			await facturasService.Crear(factura);
+			await ReducirInventario();
+			await Task.Delay(1000);
+			Volver();
+		}
+
+		StateHasChanged();
+		await Task.Delay(2000);
+	}
+
+	public async Task<bool> Validar()
+	{
+		// var valor = await productosService.Listar(e => true);
+
+		// if (cedula != null)
+		// 	return true;
+
+		// if (telefono != null)
+		// 	return true;
+
+		return false;
+	}
+
+	// public void CalcularPrecioVenta()
+	// {
+	// 	var porciento = (factura.PorcentajeGanancia * factura.Costo) / 100;
+	// 	factura.PrecioVenta = factura.Costo + porciento;
+	// }
+
+	public string ObtenerNombreProducto(int id)
+	{
+		var dato = productos.FirstOrDefault(c => c.ProductoId == id);
+
+		return dato.Nombre;
+	}
+
+	public async Task ReducirInventario()
+	{
+		foreach (var fact in factura.FacturaDetalle)
+		{
+			//CantidadProducto -= cantidad
+			var modificar = productos.FirstOrDefault(p => p.ProductoId == fact.ProductoId);
+			modificar.Cantidad -= fact.Cantidad;
+			await productosService.Modificar(modificar);
+		}
+	}
+
+	public void AgregarDetalle()
+	{
+		var nuevoDetalle = new FacturasDetalle
+			{
+				ProductoId = productoId,
+				Cantidad = cantidad,
+				PrecioVenta = precioVenta,
+				Impuesto = impuesto,
+				SubTotal = subTotal
+			};
+
+		factura.FacturaDetalle.Add(nuevoDetalle);
+		LimpiarPantalla();
+	}
+
+	public void EliminarDetalle(FacturasDetalle detalle) => factura.FacturaDetalle.Remove(detalle);
+
+	public void CalcularMonto()
+	{
+		if (productoId != 0)
+		{
+			var valor = productos.FirstOrDefault(p => p.ProductoId == productoId);
+			precioVenta = valor.PrecioVenta;
+			impuesto = Math.Round((cantidad * precioVenta) * 0.18m, 2);
+			subTotal = (cantidad * precioVenta) + impuesto;
+		}
+	}
+
+	public void LimpiarPantalla()
+	{
+		productoId = 0;
+		cantidad = 0;
+		precioVenta = 0;
+		impuesto = 0;
+		subTotal = 0;
+	}
+
+	void Volver()
+	{
+		navigation.NavigateTo("/Facturas");
+	}
+}

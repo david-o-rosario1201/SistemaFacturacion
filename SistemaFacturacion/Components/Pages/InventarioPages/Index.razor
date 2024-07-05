@@ -1,0 +1,161 @@
+﻿@page "/Inventario"
+@rendermode InteractiveServer
+@inject ProductosService productosService
+@inject NavigationManager navigation
+
+<PageTitle>Inventario</PageTitle>
+<div class="container imagenFondo">
+	<div class="card shadow-lg">
+		@*Header*@
+		<div class="card-header">
+			<h3 class="text-center"><strong>Inventario</strong></h3>
+		</div>
+		@*Body*@
+		<div class="card-body">
+			@if (loading)
+			{
+				<div class="d-flex justify-content-center">
+					<div class="spinner-border text-info">
+					</div>
+				</div>
+			}
+			else if (productos.Count == 0)
+			{
+				<h1 class="miMensaje"><i class="bi bi-exclamation-triangle" /> No hay productos creados</h1>
+			}
+			else
+			{
+				@*Campos a Filtrar*@
+				<div class="mb-3">
+					<div class="row align-items-center">
+						<label class="form-label" for="filtro"><strong>Campo a Filtrar:</strong></label>
+						<div class="col-3">
+							<InputSelect id="filtro" class="form-select" @bind-Value="filtro">
+								<option selected disabled>Elije una opci&oacute;n</option>
+								<option value="id">Id</option>
+								<option value="nombre">Nombre</option>
+								<option value="descripcion">Descripci&oacute;n</option>
+							</InputSelect>
+						</div>
+						<div class="col-auto miFlecha">
+							<p>→</p>
+						</div>
+						<div class="col-4">
+							<div class="input-group">
+								<InputText class="form-control" @bind-Value="valorFiltro" placeholder="Ingrese un dato para filtrar"></InputText>
+								<button type="button" class="btn btn-outline-primary" @onclick="Buscar"><i class="bi bi-search" /></button>
+							</div>
+						</div>
+						<div class="col-3">
+							<button type="button" class="btn btn-outline-secondary" @onclick="Restablecer"><i class="bi bi-arrow-clockwise" /> Restablecer</button>
+						</div>
+					</div>
+				</div>
+
+				<table class="table table-bordered miTabla">
+					<thead>
+						<tr>
+							<th>ProductoId</th>
+							<th>Nombre</th>
+							<th>Descripci&oacute;n</th>
+							<th>Cantidad en Inventario</th>
+							<th>Precio de Venta</th>
+							<th>Valor del Inventario</th>
+						</tr>
+					</thead>
+					<tbody>
+						@foreach (var producto in productos)
+						{
+							<tr>
+								<td>@producto.ProductoId</td>
+								<td>@producto.Nombre</td>
+								<td>@producto.Descripcion</td>
+								<td>@producto.Cantidad</td>
+								<td>@producto.PrecioVenta.ToString("N2")</td>
+								<td>@CalcularValorInventario(producto.ProductoId).ToString("N2")</td>
+								@* <td>@valorInventario = @producto.Cantidad * @producto.PrecioVenta</td> *@
+							</tr>
+						}
+					</tbody>
+				</table>
+			}
+		</div>
+		<div class="card-footer">
+			<div class="row">
+				<div class="col text-start">
+					<p><strong>Total de Productos:</strong> @productos.Count</p>
+				</div>
+				<div class="col text-end">
+					<p><strong>Total Valor en Inventario:</strong> @productos.Sum(p => p.Cantidad * p.PrecioVenta).ToString("N2")</p>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+@code {
+	public List<Productos> productos = new List<Productos>();
+	public string filtro { get; set; }
+	public string valorFiltro { get; set; }
+	public string mensaje { get; set; }
+	public bool loading { get; set; } = true;
+	public decimal valorInventario { get; set; }
+
+	protected override async Task OnInitializedAsync()
+	{
+		await Task.Delay(500);
+		productos = await productosService.Listar(e => true);
+
+		loading = false;
+
+		if (productos.Count == 0)
+			StateHasChanged();
+	}
+
+	public async Task Buscar()
+	{
+		List<Productos> resultado = new List<Productos>();
+
+		var productosList = await productosService.Listar(e => true);
+
+		switch (filtro)
+		{
+			case "id":
+				if (int.TryParse(valorFiltro, out int id))
+				{
+					resultado = productosList.Where(e => e.ProductoId == id).ToList();
+				}
+				break;
+			case "nombre":
+				resultado = productosList.Where(e =>
+					e.Nombre.Contains(valorFiltro, StringComparison.OrdinalIgnoreCase)).ToList();
+				break;
+			case "descripcion":
+				resultado = productosList.Where(e =>
+					e.Descripcion.Contains(valorFiltro, StringComparison.OrdinalIgnoreCase)).ToList();
+				break;
+		}
+
+		if (resultado == null || resultado.Count == 0)
+			mensaje = "No se encontraron productos con el filtro especificado.";
+
+		else
+		{
+			productos = resultado;
+			mensaje = string.Empty;
+		}
+
+		StateHasChanged();
+	}
+
+	public decimal CalcularValorInventario(int id)
+	{
+		var producto = productos.FirstOrDefault(p => p.ProductoId == id);
+		return producto.PrecioVenta * producto.Cantidad;
+	}
+
+	public async Task Restablecer()
+	{
+		productos = await productosService.Listar(e => true);
+	}
+}
