@@ -256,4 +256,35 @@
 	{
 		navigation.NavigateTo("/Facturas");
 	}
+
+
+	//probando algo de lenguaje
+	public void probando()
+	{
+		string condicion = "<";
+
+		Func<int, int, bool> comparador = null;
+
+		// Definir el comparador basado en la condición
+		switch (condicion)
+		{
+			case "<":
+				comparador = (a, b) => a < b;
+				break;
+			case ">":
+				comparador = (a, b) => a > b;
+				break;
+			// Agrega más condiciones según sea necesario
+			default:
+				throw new ArgumentException("Condición no válida");
+		}
+
+		if (comparador != null)
+		{
+			for (int i = 0; comparador(i, 5); i++)
+			{
+				Console.WriteLine(i);
+			}
+		}
+	}
 }
